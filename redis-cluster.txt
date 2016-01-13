@@ -68,7 +68,8 @@
     MachineType = $server_machine_type
 
         [[[configuration]]]
-        cyclecloud.discoverable = true     
+        cyclecloud.discoverable = true 
+        redis.role = server    
         redis.port_list = 7000,7001,7002,7003,7004,7005
         redis.home = /mnt/scratch/redis
 
