@@ -25,7 +25,7 @@ for PORT in ${REDIS_PORTS_ARRAY}; do
         cat <<EOF > ${SERVER_DIR}/redis_${PORT}.conf
 port ${PORT}
 cluster-enabled yes
-cluster-config-file nodes.conf
+cluster-config-file nodes.${PORT}.conf
 cluster-node-timeout 5000
 appendonly no
 save ""

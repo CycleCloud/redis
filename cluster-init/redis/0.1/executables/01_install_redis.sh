@@ -12,6 +12,10 @@ fi
 mkdir -p ${REDIS_HOME}
 
 pushd /mnt/cluster-init/scratch
+
+if ! ls ./redis-*.tar.gz 1> /dev/null 2>&1; then
+    wget http://download.redis.io/releases/redis-3.0.6.tar.gz
+fi
 tar xzf redis-*.tar.gz
 pushd redis-*
 make
