@@ -26,3 +26,5 @@ popd
 popd
 
 chmod a+rw -R ${REDIS_HOME}
+
+
