@@ -6,19 +6,36 @@ include_recipe 'redis-cluster::server_install'
 # redis-cluster will report back the ips of the cluster members
 # See: https://github.com/xetorthio/jedis/issues/943
 
+
+# Default: 0, 1 or 2 replicas depending on cluster size
+if node['redis']['replicas'].nil?
+  node.set['redis']['replicas'] = case node['redis']['cluster_size'].to_i
+                                  when 0..1
+                                    0
+                                  when 2
+                                    1
+                                  else
+                                    2
+                                  end
+end
+node.set['redis']['replicas'] = [0, node['redis']['replicas'].to_i].max
+Chef::Log.info "Joining Redis cluster [size: #{node['redis']['cluster_size']}, replicas: #{node['redis']['replicas']}]..."
+
+
 # TODO: get list from search
-cluster_replica_list=""
+Chef::Log.info "Creating #{node['redis']['server_slots']} server slots..."
 for i in 0..(node['redis']['server_slots'] - 1)
-    server_slot_port = node['redis']['base_port'] + i
+    server_slot_port = node['redis']['base_port'].to_i + i
     server_slot_home = "#{node['redis']['home']}/#{server_slot_port}"
     server_conf_file = "redis_#{server_slot_port}.conf"
-    server_address = "#{node[:cyclecloud][:instance][:ipv4]}:#{server_slot_port}"
-    cluster_replica_list = cluster_replica_list + "#{server_address} "
+    server_address = "#{node['cyclecloud']['instance']['ipv4']}:#{server_slot_port}"
 
+    Chef::Log.info "Creating server slot #{i} at #{server_slot_home}..."
     directory server_slot_home do
       owner 'root'
       group 'root'
       mode '0755'
+      recursive true
       action :create
     end
 
@@ -61,14 +78,12 @@ for i in 0..(node['redis']['server_slots'] - 1)
 
     # It appears that sometimes redis comes up without the correct config for protected mode...
     # TBD: does this mean the other configs aren't loaded?
-    if node["redis"]["version"] > "3.2"
-	    execute "disable_protected_mode_#{server_slot_port}" do
-	        command "/usr/local/bin/redis-cli -c -h 127.0.0.1 -p #{server_slot_port} config set protected-mode no >> ./redis_#{server_slot_port}.log 2>&1 &"
-	        cwd server_slot_home
-	        action :run
-	        not_if 
-	    end
-	end
+	 execute "disable_protected_mode_#{server_slot_port}" do
+	   command "/usr/local/bin/redis-cli -c -h 127.0.0.1 -p #{server_slot_port} config set protected-mode no >> ./redis_#{server_slot_port}.log 2>&1 &"
+	   cwd server_slot_home
+	   action :run
+	   not_if node["redis"]["version"] < "3.2"
+	 end
 
 end
 node.set['redis']['ready'] = true
@@ -82,7 +97,7 @@ if node["redis"]["members"].nil?
     members = cluster.search.select {|n| not n['redis'].nil? and n['redis']['ready'] == true}.map  do |n|
       n[:cyclecloud][:instance][:ipv4]
     end
-    if members.length == node["redis"]["cluster_size"]
+    if members.length >= node["redis"]["cluster_size"]
       break
     end
     Chef::Log.info "Waiting on Redis cluster: so far - #{members.inspect}"
@@ -90,15 +105,15 @@ if node["redis"]["members"].nil?
   end
 end
 
-if members.length != node["redis"]["cluster_size"]
+if members.length < node["redis"]["cluster_size"]
   raise Exception, "Redis cluster timed out!"
 end
 members.sort!
-Chef::Log.info "Redis cluster: [ #{members.inspect} ]"
+Chef::Log.info "Redis cluster: #{members.inspect}"
 node.set['redis']['members'] = members
 
 # first ip will initialize
-if node[:cyclecloud][:instance][:ipv4] == members[0]
+if node['cyclecloud']['instance']['ipv4'] == members[0]
   cluster_replica_list = ""
   for member in members
     for i in 0..(node['redis']['server_slots'] - 1)
@@ -107,17 +122,17 @@ if node[:cyclecloud][:instance][:ipv4] == members[0]
       cluster_replica_list = cluster_replica_list + "#{server_address} "
     end
   end
-  Chef::Log.info cluster_replica_list
-  execute "Create Redis cluster" do
+
+  execute "Create Redis cluster #{cluster_replica_list}" do
       command "yes yes | ./redis-trib.rb create --replicas #{node['redis']['replicas']} #{cluster_replica_list} | tee /dev/stderr | ( ! grep -q 'error\|CLUSTERDOWN' )"
       cwd node['redis']['home']
       # Verify that the "myself" line is not the only line
-      not_if "redis-cli -h #{node[:cyclecloud][:instance][:ipv4]} -p #{node['redis']['base_port']} cluster nodes | grep -q -v 'myself'"
+      not_if "redis-cli -h #{node['cyclecloud']['instance']['ipv4']} -p #{node['redis']['base_port']} cluster nodes | grep -q -v 'myself'"
   end
 
   # Sadly, redis-cli isn't reliable about setting the error code
   execute "Test redis status or fail" do
-    command "redis-cli -c -h #{node[:cyclecloud][:instance][:ipv4]}  -p #{server_slot_port} set status_test up | tee /dev/stderr | ( ! grep -q 'error\|CLUSTERDOWN' )"
+    command "redis-cli -c -h #{node['cyclecloud']['instance']['ipv4']}  -p #{server_slot_port} set status_test up | tee /dev/stderr | ( ! grep -q 'error\|CLUSTERDOWN' )"
   end
 
 end

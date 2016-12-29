@@ -14,9 +14,10 @@ if ::File.exists?(installation_marker_file)
 else
     Chef::Log.info "Installing Redis to: #{redis_srcpath}"
 
-    Chef::Log.info "Building Redis package."
     include_recipe 'build-essential'
 
+    log "Building Redis package." do level :info end
+    
     thunderball 'redis' do
       url "cycle/#{node['redis']['source']}"
     end

@@ -1,0 +1,7 @@
+TODO
+====
+
+1. We don't currently handle adding additional Redis nodes (even for recovery) after initial startup
+
+   a. NOTE: It may actually work if you log in to the nodes and manually "cluster meet" and "redistrib" the new node
+
