@@ -188,7 +188,7 @@ Order = 50
     Conditions.Excluded := CloudProvider !== "GCP"
 
     
-[cluster redis-cluster]
+[cluster RedisCluster]
     FormLayout = selectionpanel
     IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
 
