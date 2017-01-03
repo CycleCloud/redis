@@ -59,6 +59,20 @@ Order = 10
 Order = 30
 Description = Specify the scheduling software, and base OS installed on all nodes, and optionally the cluster-init and chef versions from your Locker.
 
+    [[parameters Redis]]
+    Description = Adjust the Redis configuration options.  (Data redunancy requires more than 1 server.)
+    Order = 10
+
+        [[[parameter RedisClusterSize]]]
+        Label = Cluster Size
+        Description = The number of Redis Servers to start initially.
+        DefaultValue = 1
+        Config.Plugin = pico.form.NumberTextBox
+        Config.MinValue = 1
+        Config.MaxValue = 10
+        Config.IntegerOnly = true
+
+
     [[parameter ImageName]]
     Label = Base OS
     ParameterType = Cloud.Image
@@ -73,16 +87,6 @@ Description = Specify the scheduling software, and base OS installed on all node
 
 [parameters Compute Backend]
     Order = 40
-
-    [[parameter RedisClusterSize]]
-    Label = Cluster Size
-    Description = The number of Redis Servers to start initially.
-    DefaultValue = 1
-    Config.Plugin = pico.form.NumberTextBox
-    Config.MinValue = 1
-    Config.MaxValue = 10
-    Config.IntegerOnly = true
-
 
     [[parameters Instance Types]]
     Description = "The cluster, in this case, has two roles: the return proxy node and the Redis server hosts. Configure which instance types to use based on the requirements of your application.  The proxy host may be used to enable firewall traversal between the cluster and CycleCloud.   In VPC environments with virtual network, this node is not required."
