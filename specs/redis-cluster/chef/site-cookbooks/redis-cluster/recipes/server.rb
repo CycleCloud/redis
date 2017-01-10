@@ -89,36 +89,36 @@ end
 node.set['redis']['ready'] = true
 node.set['cyclecloud']['discoverable'] = true
 
-if node["redis"]["members"].nil?
-  members = nil
+if node["redis"]["servers"].nil?
+  servers = nil
   timeout = 60 * 5
   omega = Time.now.to_i + timeout
   while Time.now.to_i < omega do
-    members = cluster.search.select {|n| not n['redis'].nil? and n['redis']['ready'] == true}.map  do |n|
+    servers = cluster.search.select {|n| not n['redis'].nil? and n['redis']['ready'] == true}.map  do |n|
       n[:cyclecloud][:instance][:ipv4]
     end
-    if members.length >= node["redis"]["cluster_size"]
+    if servers.length >= node["redis"]["cluster_size"]
       break
     end
-    Chef::Log.info "Waiting on Redis cluster: so far - #{members.inspect}"
+    Chef::Log.info "Waiting on Redis cluster: so far - #{servers.inspect}"
     sleep 10
   end
 end
 
-if members.length < node["redis"]["cluster_size"]
+if servers.length < node["redis"]["cluster_size"]
   raise Exception, "Redis cluster timed out!"
 end
-members.sort!
-Chef::Log.info "Redis cluster: #{members.inspect}"
-node.set['redis']['members'] = members
+servers.sort!
+Chef::Log.info "Redis cluster: #{servers.inspect}"
+node.set['redis']['servers'] = servers
 
 # first ip will initialize
-if node['cyclecloud']['instance']['ipv4'] == members[0]
+if node['cyclecloud']['instance']['ipv4'] == servers[0]
   cluster_replica_list = ""
-  for member in members
+  for server in servers
     for i in 0..(node['redis']['server_slots'] - 1)
       server_slot_port = node['redis']['base_port'] + i
-      server_address = "#{member}:#{server_slot_port}"
+      server_address = "#{server}:#{server_slot_port}"
       cluster_replica_list = cluster_replica_list + "#{server_address} "
     end
   end
@@ -136,3 +136,5 @@ if node['cyclecloud']['instance']['ipv4'] == members[0]
   end
 
 end
+
+include_recipe 'redis-cluster::client'
