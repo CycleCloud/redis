@@ -1,6 +1,10 @@
+# Redis Cluster for clients to use
+default['redis']['cluster_name'] = node['cyclecloud']['cluster']['id']
+
 # Client configuration file (alternately use: jetpack config redis.hostlist)
 default['redis']['hostlist'] = []
 default['redis']['hostfile'] = File.join(node['cyclecloud']['home'], "config", "redis_hosts.txt")
+
 
 # Server settings
 default['redis']['home'] = "/mnt/scratch/redis"

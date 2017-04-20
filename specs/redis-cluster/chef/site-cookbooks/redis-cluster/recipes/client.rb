@@ -1,7 +1,8 @@
 # The basic Redis Client recipe simply makes the server hostlist available
 # to client applications via jetpack or via a conf file.
 
-servers = cluster.search.select {|n| not n['redis'].nil? and n['redis']['ready'] == true}.map  do |n|
+redis_cluster = node['redis']['cluster_name']
+servers = cluster.search(:clusterUID => redis_cluster).select {|n| not n['redis'].nil? and n['redis']['ready'] == true}.map  do |n|
   "#{n['cyclecloud']['instance']['ipv4']}:#{n['redis']['base_port']}"
 end
 servers.sort!

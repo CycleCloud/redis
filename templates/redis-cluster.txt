@@ -120,7 +120,7 @@ Description = Specify the scheduling software, and base OS installed on all node
     Label = Term Protection
     DefaultValue = false
     Widget.Plugin = pico.form.BooleanCheckBox
-    Widget.Label = Enable Termination Protection?
+    Widget.Label = Enable Termination Protection
 
     [[parameter ServerGcpTagList]]
     Label = Tag List
