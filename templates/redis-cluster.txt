@@ -70,7 +70,7 @@ Description = Specify the scheduling software, and base OS installed on all node
 
         [[[parameter ProjectVersion]]]
         Label = Project Version
-        DefaultValue = 1.0.0
+        DefaultValue = 1.1.0
         Description = Select the Redis project spec version
         Hidden = true
 
@@ -177,18 +177,14 @@ Order = 50
 
     
 [cluster RedisCluster]
-    FormLayout = selectionpanel
-    IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
+     FormLayout = selectionpanel
+     IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
 
-    # Autoscale for Redis is out-of-scope for this example
-    # If required, please contact CycleComputing for additional support
-    Autoscale = false
+     # Autoscale for Redis is out-of-scope for this example
+     # If required, please contact CycleComputing for additional support
+     Autoscale = false
 
-    [[node defaults]]
-    Project = redis-cluster
-    ProjectVersion = $ProjectVersion
-    ProjectSpec = redis-cluster
-
+     [[node defaults]]
      TerminationProtection = $EnableTerminationProtection
      ImageName = $ImageName
 
@@ -209,13 +205,16 @@ Order = 50
      # Azure
      Region = $Region
 
+     [[[cluster-init redis-cluster:redis-cluster:$ProjectVersion]]]
+
+
      [[node proxy]]
      IsReturnProxy = true
      MachineType = $ProxyMachineType
      SubnetId = ${IfThenElse(CloudProvider==="Azure", AzureSubnetId, AwsProxySubnetId)}
 
          [[[configuration]]]
-         run_list = recipe[cganglia::server]
+         run_list = recipe[redis-cluster::client], recipe[cganglia::server], recipe[cganglia::client]
 
          cyclecloud.discoverable = true
         
