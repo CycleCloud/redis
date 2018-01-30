@@ -120,7 +120,7 @@ Description = Specify the scheduling software, and base OS installed on all node
     Label = Term Protection
     DefaultValue = false
     Widget.Plugin = pico.form.BooleanCheckBox
-    Widget.Label = Enable Termination Protection
+    Widget.Label = Enable Termination Protection?
 
     [[parameter ServerGcpTagList]]
     Label = Tag List
@@ -175,10 +175,16 @@ Order = 50
     Description = No custom configuration required.
     Conditions.Excluded := CloudProvider !== "GCP"
 
+    [[parameter ExecuteNodesPublic]]
+    Label = Public Servers
+    DefaultValue = false
+    Widget.Plugin = pico.form.BooleanCheckBox
+    Widget.Label = Make the Redis servers accessible from the Internet
+
     
 [cluster RedisCluster]
-     FormLayout = selectionpanel
-     IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
+FormLayout = selectionpanel
+IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
 
      # Autoscale for Redis is out-of-scope for this example
      # If required, please contact CycleComputing for additional support
@@ -191,8 +197,6 @@ Order = 50
      # Chef and Locker Config
      Credentials = $Credentials
 
-     # Cycle Examples Repository
-     Locker=cyclecloud-mirrors
 
      # EC2
      AWS.InstanceProfileArn=$RedisAccessArn
@@ -206,6 +210,8 @@ Order = 50
      Region = $Region
 
      [[[cluster-init redis-cluster:redis-cluster:$ProjectVersion]]]
+     # Cycle Examples Repository
+     Locker = cyclecloud
 
 
      [[node proxy]]
@@ -234,6 +240,9 @@ Order = 50
 
     TagList = $ServerGcpTagList
 
+
+         [[[network-interface]]]
+         AssociatePublicIpAddress = $ExecuteNodesPublic
 
         [[[configuration]]]
         run_list = role[redis_server]
