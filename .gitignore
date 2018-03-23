@@ -9,4 +9,5 @@
 .vagrant
 build
 target
+params.json
 /docs/build/

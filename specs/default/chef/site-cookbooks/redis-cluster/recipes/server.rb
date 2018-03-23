@@ -1,6 +1,13 @@
 include_recipe 'redis-cluster::default'
 include_recipe 'redis-cluster::server_install'
 
+# disable the default redis service
+['redis', 'redis-sentinel'].each do |s|
+  service s do
+    action [:stop, :disable]
+  end
+end
+
 # IMPORTANT:
 # If running through STunnel - set NODE_IP to loopback (127.0.0.1)
 # redis-cluster will report back the ips of the cluster members
@@ -63,7 +70,7 @@ for i in 0..(node['redis']['server_slots'] - 1)
 
 
     execute "start_redis_#{server_slot_port}" do
-        command "/usr/local/bin/redis-server #{server_conf_file} #{protected_mode_arg} --loglevel verbose > ./redis_#{server_slot_port}.log 2>&1 &"
+        command "redis-server #{server_conf_file} #{protected_mode_arg} --loglevel verbose > ./redis_#{server_slot_port}.log 2>&1 &"
         cwd server_slot_home
         action :nothing
     end
@@ -79,7 +86,7 @@ for i in 0..(node['redis']['server_slots'] - 1)
     # It appears that sometimes redis comes up without the correct config for protected mode...
     # TBD: does this mean the other configs aren't loaded?
 	 execute "disable_protected_mode_#{server_slot_port}" do
-	   command "/usr/local/bin/redis-cli -c -h 127.0.0.1 -p #{server_slot_port} config set protected-mode no >> ./redis_#{server_slot_port}.log 2>&1 &"
+	   command "redis-cli -c -h 127.0.0.1 -p #{server_slot_port} config set protected-mode no >> ./redis_#{server_slot_port}.log 2>&1 &"
 	   cwd server_slot_home
 	   action :run
 	   not_if node["redis"]["version"] < "3.2"
@@ -124,7 +131,7 @@ if node['cyclecloud']['instance']['ipv4'] == servers[0]
   end
 
   execute "Create Redis cluster #{cluster_replica_list}" do
-      command "yes yes | ./redis-trib.rb create --replicas #{node['redis']['replicas']} #{cluster_replica_list} | tee /dev/stderr | ( ! grep -q 'error\|CLUSTERDOWN' )"
+      command "yes yes | redis-trib create --replicas #{node['redis']['replicas']} #{cluster_replica_list} | tee /dev/stderr | ( ! grep -q 'error\|CLUSTERDOWN' )"
       cwd node['redis']['home']
       # Verify that the "myself" line is not the only line
       not_if "redis-cli -h #{node['cyclecloud']['instance']['ipv4']} -p #{node['redis']['base_port']} cluster nodes | grep -q -v 'myself'"
