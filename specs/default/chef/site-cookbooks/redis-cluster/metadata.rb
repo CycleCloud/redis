@@ -5,6 +5,5 @@ license          "All Rights Reserved"
 description      "Installs/Configures redis cluster"
 version          "1.0.0"
 
-depends 'build-essential'
 depends 'line'
 depends 'sysctl'

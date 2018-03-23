@@ -1,7 +1,5 @@
 include_recipe 'redis-cluster::default'
 
-log "Installing Redis Server and Redis Gem..." do level :info end
-
 log "Configuring kernel for high memory redis application..." do level :info end
 include_recipe 'sysctl::default'
 
