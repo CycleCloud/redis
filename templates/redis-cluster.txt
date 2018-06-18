@@ -18,13 +18,21 @@ Order = 10
         ParameterType = Cloud.Credentials
 
         [[[parameter Region]]]
-        Label = Location
+        Label = Region
         Description = Deployment Location
         ParameterType = Cloud.Region
 
     [[parameters Node Access]]
     Description = "Specify the credentials required for access to the node.  The Keypair Path specifies the path on local machines for cyclecloud CLI access."
     Order = 20
+
+        [[[parameter awsKeypair]]]
+        Label = AWS Keypair
+        Description = The keypair to connect with
+        ParameterType = AWS.Keypair
+        DefaultValue = cyclecloud
+        Conditions.Required := CloudProvider === "AWS"
+        Conditions.Excluded := CloudProvider !== "AWS"
 
         [[[parameter keypairLocation]]]
         Label = Keypair Path
@@ -36,13 +44,15 @@ Order = 10
         Label = Username
         Description = The username for the built-in local user on all nodes for direct ssh access.
         DefaultValue = cyclecloud
+        Conditions.Required := (CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
+        Conditions.Excluded := !(CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
 
         [[[parameter Password]]]
         Label = Password
         ParameterType = Password
         Description = The password for the built-in local user on all nodes for direct ssh access.
-        Conditions.Required := startswith("cycle.image.win", ImageName)
-        Conditions.Excluded := !startswith("cycle.image.win", ImageName)
+        Conditions.Required := (CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
+        Conditions.Excluded := !(CloudProvider === "Azure" && startswith("cycle.image.win", ImageName))
 
 
 [parameters Cluster Software]
@@ -56,8 +66,7 @@ Description = Specify the scheduling software, and base OS installed on all node
         Label = Base OS
         ParameterType = Cloud.Image
         Config.OS = linux
-        #        DefaultValue = cycle.image.centos7
-        DefaultValue = cycle.image.ubuntu14
+        DefaultValue = cycle.image.centos7
 
         [[[parameter ProjectVersion]]]
         Label = Project Version
@@ -65,11 +74,6 @@ Description = Specify the scheduling software, and base OS installed on all node
         Description = Select the Redis project spec version
         Hidden = true
 
-        [[[parameter StageResources]]]
-        Label = Stage Resources
-        DefaultValue = true
-        Description = whether or not to stage resources
-        Hidden = true
 
     [[parameters Redis]]
     Description = Adjust the Redis configuration options.  (Data redunancy and fault tolerance requires more than 1 server (max: 10).)
@@ -96,13 +100,20 @@ Description = Specify the scheduling software, and base OS installed on all node
         Label = Proxy
         Description = The machine type for the optional proxy host
         ParameterType = Cloud.MachineType
-        DefaultValue = Standard_A2
+            [[[[record Config.ProviderDefaults]]]]
+            AWS = m3.large 
+            Azure = Standard_A2_v2
+            GCP = n1-standard-4
+
 
        [[[parameter ServerMachineType]]]
        Label = Server
        Description = The machine type for the Redis servers
        ParameterType = Cloud.MachineType
-       DefaultValue = Standard_DS4_v2 
+           [[[[record Config.ProviderDefaults]]]]
+           AWS = m3.large 
+           Azure = Standard_DS4_v2 
+           GCP = n1-standard-4
 
     [[parameter EnableTerminationProtection]]
     Label = Term Protection
@@ -110,9 +121,42 @@ Description = Specify the scheduling software, and base OS installed on all node
     Widget.Plugin = pico.form.BooleanCheckBox
     Widget.Label = Enable Termination Protection?
 
+    [[parameter ServerGcpTagList]]
+    Label = Tag List
+    ParameterType = StringList
+    Conditions.Excluded := CloudProvider !== "GCP"
+    
+    [[parameter RedisAccessArn]]
+    Label = IAM Profile
+    DefaultValue := undefined
+    Conditions.Excluded := CloudProvider !== "AWS"
+
 
 [parameters Networking]
 Order = 50
+    
+    [[parameters AWS]]
+    Order = 20
+    Conditions.Excluded := CloudProvider !== "AWS"
+    Description = "Optional use of VPC components. Without specifying a subnet or security group the hosts will be started in the default region, VPC and security group."
+    
+        [[[parameter AwsProxySubnetId]]]
+        Label = Proxy Subnet
+        ParameterType = AWS.Subnet
+        Description = The subnet ID to use when in a VPC environment
+        Conditions.Excluded := CloudProvider !== "AWS"
+
+        [[[parameter AwsSubnetId]]]
+        Label = VPC Subnets
+        ParameterType = AWS.Subnet
+        AutoSelect = true
+        Description = The subnet ID to use when in a VPC environment.
+        Conditions.Excluded := CloudProvider !== "AWS"
+
+        [[[parameter RedisSecurityGroups]]]
+        Label = Security Group(s)
+        Description = "The security group ID(s) to use. Can be comma-separated list for multiple security groups. eg: sg-a0000001, sg-a0000002."
+        ParameterType = AWS.SecurityGroupList
 
     [[parameters Azure Virtual Network Configuration]]
     Order = 40
@@ -122,48 +166,67 @@ Order = 50
         Label = Subnet ID
         Description = Subnet Resource Path (ResourceGroup/VirtualNetwork/Subnet)
         ParameterType = Azure.Subnet
-        Required = true
-        
-    [[parameter ExecuteNodesPublic]]
-    Label = Public Servers
-    DefaultValue = false
-    Widget.Plugin = pico.form.BooleanCheckBox
-    Widget.Label = Make the Redis servers accessible from the Internet
+        Conditions.Required := CloudProvider === "Azure"
+        Conditions.Excluded := CloudProvider !== "Azure"
 
-    
+    [[parameters Google Compute Network Configuration]]
+    Order = 40
+    Description = No custom configuration required.
+    Conditions.Excluded := CloudProvider !== "GCP"
+
+    [[[parameter UsePublicNetwork]]]
+    Label = Public Networking
+    DefaultValue = true
+    ParameterType = Boolean
+    Config.Label = Allow access from the Internet
+
+    [[[parameter ExecuteNodesPublic]]]
+    Label = Public Execute
+    DefaultValue = false
+    ParameterType = Boolean
+    Config.Label = Make the Redis servers accessible from the Internet
+    Conditions.Excluded := UsePublicNetwork isnt true
+
+
 [cluster RedisCluster]
 FormLayout = selectionpanel
-IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
+IconUrl = static/cloud/cluster/ui/ClusterIcon/redis-icon.png
 
-     # Autoscale for Redis is out-of-scope for this example
-     # If required, please contact CycleComputing for additional support
-     Autoscale = false
+    # Autoscale for Redis is out-of-scope for this example
+    # If required, please contact CycleComputing for additional support
+    Autoscale = false
 
-     [[node defaults]]
+    [[node defaults]]
      TerminationProtection = $EnableTerminationProtection
      ImageName = $ImageName
+     UsePublicNetwork = $UsePublicNetwork
 
-     StageResources = $StageResources
      # Chef and Locker Config
      Credentials = $Credentials
-     KeyPairLocation = $KeypairLocation
-     SubnetId = $AzureSubnetId
 
-     [[[cluster-init redis-cluster:default:$ProjectVersion]]]
-     Locker = cyclecloud
+     # EC2
+     AWS.InstanceProfileArn=$RedisAccessArn
+     KeyPair = $AwsKeypair
+     KeyPairLocation = $KeypairLocation
+     SecurityGroups = $RedisSecurityGroups
+
+     SubnetId = ${IfThenElse(CloudProvider==="Azure", AzureSubnetId, AwsSubnetId)}
 
      # Azure
      Region = $Region
 
+     [[[cluster-init redis-cluster:default:$ProjectVersion]]]
+     # Cycle Examples Repository
+     Locker = cyclecloud
+
      [[node proxy]]
      IsReturnProxy = true
      MachineType = $ProxyMachineType
-     SubnetId = $AzureSubnetId
+     SubnetId = ${IfThenElse(CloudProvider==="Azure", AzureSubnetId, AwsProxySubnetId)}
 
          [[[configuration]]]
          run_list = recipe[cganglia::server]
          cyclecloud.discoverable = true
-
 
          [[[cluster-init redis-cluster:proxy:$ProjectVersion]]]
          # Cycle Examples Repository
@@ -183,8 +246,11 @@ IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
     MachineType = $ServerMachineType
     InitialCount = $RedisClusterSize
 
-         [[[network-interface]]]
-         AssociatePublicIpAddress = $ExecuteNodesPublic
+    TagList = $ServerGcpTagList
+
+    [[[network-interface]]]
+    AssociatePublicIpAddress = $ExecuteNodesPublic
+
 
         [[[configuration]]]
         run_list = recipe[cganglia::client]
@@ -193,6 +259,7 @@ IconUrl = http://download.cyclecomputing.com/logos/redis-192x192.png
 
         [[[cluster-init redis-cluster:server:$ProjectVersion]]]
         Locker = cyclecloud
+        
         # Configure Azure external input endpoints (for example SSH)
         [[[input-endpoint SSH]]]
         PrivatePort = 22
