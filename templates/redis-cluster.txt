@@ -146,7 +146,7 @@ IconUrl = static/cloud/cluster/ui/ClusterIcon/redis-icon.png
      SubnetId = $AzureSubnetId
      Region = $Region
 
-     [[[cluster-init cyclecloud/redis-cluster:default:$ProjectVersion]]]
+     [[[cluster-init cyclecloud/redis:default:$ProjectVersion]]]
 
      [[node proxy]]
      IsReturnProxy = true
@@ -157,7 +157,7 @@ IconUrl = static/cloud/cluster/ui/ClusterIcon/redis-icon.png
          run_list = recipe[cganglia::server]
          cyclecloud.discoverable = true
 
-         [[[cluster-init cyclecloud/redis-cluster:proxy:$ProjectVersion]]]
+         [[[cluster-init cyclecloud/redis:proxy:$ProjectVersion]]]
 
          # Configure Azure external input endpoints (for example SSH)
          [[[input-endpoint SSH]]]
@@ -182,7 +182,7 @@ IconUrl = static/cloud/cluster/ui/ClusterIcon/redis-icon.png
         cyclecloud.discoverable = true
         redis.cluster_size = $RedisClusterSize
 
-        [[[cluster-init cyclecloud/redis-cluster:server:$ProjectVersion]]]
+        [[[cluster-init cyclecloud/redis:server:$ProjectVersion]]]
         
         # Configure Azure external input endpoints (for example SSH)
         [[[input-endpoint SSH]]]
